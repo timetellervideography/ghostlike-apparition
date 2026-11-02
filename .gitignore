@@ -1,0 +1,10 @@
+# band recordings stay private (DI track, reference mix) and the preview build that embeds the DI
+*.wav
+*.aif
+*.aiff
+apparition.html
+# build output and fetched dependencies
+plugin/build/
+plugin/third_party/JUCE/
+plugin/third_party/web/
+.DS_Store
