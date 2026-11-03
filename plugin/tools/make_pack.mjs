@@ -24,7 +24,7 @@ async function cached(url, name) {
 }
 
 let html = fs.readFileSync(path.join(srcDir, 'apparition.src.html'), 'utf8');
-html = html.replace('/*__AMP3D__*/', () => fs.readFileSync(path.join(srcDir, 'amp3d.js'), 'utf8')).replace('__DI_B64__', '');
+html = html.replace('/*__AMP3D__*/', () => fs.readFileSync(path.join(srcDir, 'amp3d.js'), 'utf8') + '\n' + fs.readFileSync(path.join(srcDir, 'pedal3d.js'), 'utf8')).replace('__DI_B64__', '');
 
 // three.js → local file
 const THREE = 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.158.0/three.min.js';

@@ -184,6 +184,26 @@ button:focus-visible,.k:focus-visible,input:focus-visible,[tabindex]:focus-visib
 .stage:not([data-mod=amp]){--cloud-a:.18}
 @keyframes fog{to{transform:translate(4%,-3%) scale(1.06)}}
 .amp3d{position:relative;width:min(100%,1180px);aspect-ratio:1.6/1;margin-top:-4px}
+.pedal3d{position:relative;width:min(100%,1180px);aspect-ratio:1.75/1;margin:0 auto}.pedal3d.fx3d{aspect-ratio:2.25/1}
+.pedal3d::after{content:"";position:absolute;inset:0;pointer-events:none;background:radial-gradient(85% 95% at 50% 42%,transparent 58%,rgba(5,6,5,.7))}
+.has3d .floor,.has3d .fxrow{display:none}
+.fxcap{display:flex;gap:24px;justify-content:center;flex-wrap:wrap;margin-top:6px}
+/* parametric EQ */
+.peq{width:min(100%,1080px);margin:0 auto}
+.peqbar{display:flex;align-items:center;gap:14px;margin-bottom:10px;flex-wrap:wrap}.peqbar .eyebrow{flex:1}
+.btn.ghost{background:none;color:var(--kalk);border:1px solid var(--linie-stark)}.btn.ghost:hover{color:var(--kalkweiss);border-color:var(--kalk)}.btn.sm{padding:6px 12px;font-size:11px}
+.peqview{position:relative;height:clamp(240px,32vw,380px);background:radial-gradient(120% 100% at 50% 0%,#1a1f1c,#0a0c0b 72%);border:1px solid var(--linie-stark);border-radius:12px;overflow:hidden;box-shadow:inset 0 1px 0 rgba(255,255,255,.06),0 24px 60px rgba(0,0,0,.55);touch-action:none}
+.peqview canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+.eqn{position:absolute;width:28px;height:28px;margin:-14px 0 0 -14px;border-radius:50%;background:var(--c);color:#0a0b0a;font:700 12px/28px var(--f-mono);text-align:center;box-shadow:0 0 0 3px rgba(10,11,10,.75),0 0 22px var(--c);cursor:grab;touch-action:none;transition:transform .12s}
+.eqn:hover,.eqn.sel{transform:scale(1.18)}.eqn.zero{opacity:.6}.eqn:active{cursor:grabbing}
+.eqtip{position:absolute;pointer-events:none;transform:translate(-50%,calc(-100% - 22px));background:rgba(10,11,10,.88);border:1px solid var(--linie-stark);padding:4px 9px;font:12px var(--f-mono);color:var(--kalkweiss);white-space:nowrap}
+.peqbands{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;margin-top:12px}
+.eqcard{background:linear-gradient(#1c201e,#131615);border:1px solid var(--linie);border-top:3px solid var(--c);border-radius:8px;padding:10px 6px 4px;display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer}
+.eqcard.sel{border-color:var(--c);box-shadow:inset 0 0 0 1px var(--c),0 0 24px -8px var(--c)}
+.eqcard h4{margin:0;font:700 11px var(--f-mono);letter-spacing:.12em;text-transform:uppercase;color:var(--kalk)}.eqcard h4 i{color:var(--c);font-style:normal;margin-right:6px}
+.eqcard .ks{display:flex;gap:0;justify-content:center;width:100%}
+.eqcard .kn.sm{--kd:30px;width:calc(var(--kd) + 16px);min-width:0;flex:1 1 0}.eqcard .kn.sm .k{width:calc(var(--kd) + 14px);height:calc(var(--kd) + 14px)}.eqcard .k-lab{font-size:10px}.eqcard .k-val{font-size:10.5px;white-space:nowrap}
+@media (max-width:760px){.peqbands{grid-template-columns:repeat(2,minmax(0,1fr))}}
 .amp3d-canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
 .amp3d-hits{position:absolute;inset:0}
 .kn.hit{position:absolute;display:block;width:var(--hd);height:var(--hd);transform:translate(-50%,-50%);--kd:var(--hd)}
@@ -452,6 +472,7 @@ textarea.copy{width:100%;height:120px;margin-top:8px;font-family:var(--f-mono);f
       <div class="browser" id="browser" hidden></div>
     </div>
     <section class="mod" data-mod="pedals" hidden>
+      <div class="pedal3d" id="pedals3d"></div>
       <div class="floor">
         <div class="pedal gate hw">
           <div class="pname">VALI-GATE</div>
@@ -522,26 +543,32 @@ textarea.copy{width:100%;height:120px;margin-top:8px;font-family:var(--f-mono);f
     </section>
 
     <section class="mod" data-mod="eq" hidden>
-      <div class="rack">
-        <h3 class="disp"><span class="led green" data-led="eqOn" data-toggle="eqOn" role="button" tabindex="0" aria-label="EQ an/aus"></span>Graphic 5 <span class="eyebrow">Post-Cab EQ</span></h3>
-        <div class="eqbody"><canvas class="screen" id="eqScreen"></canvas><div class="faders" id="faders"></div></div>
+      <div class="peq">
+        <div class="peqbar"><button class="tsw" data-toggle="eqOn"><span class="led green" data-led="eqOn"></span>EQ aktiv</button><span class="eyebrow">Parametrischer 5-Band-EQ · nach dem Cab · Live-Spektrum</span><button class="btn ghost sm" id="eqFlat">Flat</button></div>
+        <div class="peqview" id="eqView"><canvas id="eqScreen"></canvas><div class="eqtip" id="eqTip" hidden></div></div>
+        <div class="peqbands" id="eqBands"></div>
       </div>
-      <p class="hint">Mitten-Scoop auf eigene Gefahr. Im Proberaum klingt's fett, im Bandmix ist die Gitarre dann weg.</p>
+      <p class="hint">Punkte ziehen: links/rechts = Frequenz, hoch/runter = Gain. Mausrad auf einem Punkt = Güte, Doppelklick = 0 dB. Mitten-Scoop auf eigene Gefahr: Im Proberaum klingt's fett, im Bandmix ist die Gitarre dann weg.</p>
     </section>
 
     <section class="mod" data-mod="fx" hidden>
+      <div class="pedal3d fx3d" id="fx3d"></div>
       <div class="fxrow">
+        <div class="unit ch hw">
+          <div class="uh"><div><b>PHANTOM</b><br><span>Stereo Chorus</span></div><button class="powerbtn" data-toggle="chOn"><span class="led blue" data-led="chOn"></span>On</button></div>
+          <div class="uk"><div class="kn" data-p="chRate" data-l="Rate"></div><div class="kn" data-p="chDepth" data-l="Depth"></div><div class="kn" data-p="chMix" data-l="Mix"></div></div>
+        </div>
         <div class="unit dly hw">
           <div class="uh"><div><b>AFTERIMAGE</b><br><span>Stereo Ping-Pong Delay</span></div><button class="powerbtn" data-toggle="dlyOn"><span class="led blue" data-led="dlyOn"></span>On</button></div>
           <div class="uk"><div class="kn" data-p="dlyTime" data-l="Time"></div><div class="kn" data-p="dlyFb" data-l="Repeats"></div><div class="kn" data-p="dlyMix" data-l="Mix"></div><div class="kn" data-p="dlyTone" data-l="Tone"></div></div>
-          <div class="tag" id="dlyTag"></div>
         </div>
         <div class="unit rev hw">
           <div class="uh"><div><b>ETHER</b><br><span>Hall Reverb</span></div><button class="powerbtn" data-toggle="revOn"><span class="led amber" data-led="revOn"></span>On</button></div>
           <div class="uk"><div class="kn" data-p="revDecay" data-l="Decay"></div><div class="kn" data-p="revPre" data-l="Pre-Delay"></div><div class="kn" data-p="revMix" data-l="Mix"></div><div class="kn" data-p="revTone" data-l="Tone"></div></div>
-          <div class="tag" id="revTag"></div>
         </div>
       </div>
+      <div class="fxcap"><span class="tag" id="dlyTag"></span><span class="tag" id="revTag"></span></div>
+      <p class="hint">Fußschalter klicken = an/aus. Reihenfolge wie im Effektweg: Chorus, Delay, Hall. Der Chorus macht Cleans breit, für Leads reicht wenig Mix.</p>
     </section>
   </main>
   <aside class="iocol" aria-label="Pegel">
@@ -600,7 +627,10 @@ const PARAMS={
   ampTight:{b:1,def:1}, ampBright:{b:1,def:0}, power:{b:1,def:1},
   cabOn:{b:1,def:1}, cabType:{e:['crypt','wraith','hollow','tomb'],def:'crypt'}, mic:{e:['dyn57','rib121','blend'],def:'dyn57'},
   micPos:{min:0,max:1,def:.3}, cabLo:{min:40,max:200,def:80,f:fhz,log:1}, cabHi:{min:3000,max:16000,def:12000,f:fhz,log:1},
-  eqOn:{b:1,def:1}, eq1:{min:-12,max:12,def:0,f:fdB}, eq2:{min:-12,max:12,def:0,f:fdB}, eq3:{min:-12,max:12,def:0,f:fdB}, eq4:{min:-12,max:12,def:0,f:fdB}, eq5:{min:-12,max:12,def:0,f:fdB},
+  eqOn:{b:1,def:1}, eq1:{min:-12,max:12,def:0,f:fdB},
+  eqF1:{min:30,max:400,def:80,f:fhz,log:1}, eqF2:{min:60,max:1200,def:240,f:fhz,log:1}, eqF3:{min:200,max:4000,def:750,f:fhz,log:1}, eqF4:{min:600,max:10000,def:2200,f:fhz,log:1}, eqF5:{min:2000,max:16000,def:6600,f:fhz,log:1},
+  eqQ2:{min:.3,max:6,def:1.1,f:v=>'Q '+v.toFixed(2),log:1}, eqQ3:{min:.3,max:6,def:1.1,f:v=>'Q '+v.toFixed(2),log:1}, eqQ4:{min:.3,max:6,def:1.1,f:v=>'Q '+v.toFixed(2),log:1},
+  chOn:{b:1,def:0}, chRate:{min:.1,max:8,def:.8,f:v=>v.toFixed(2)+' Hz',log:1}, chDepth:{...K11,def:5}, chMix:{min:0,max:100,def:50,f:fpct}, eq2:{min:-12,max:12,def:0,f:fdB}, eq3:{min:-12,max:12,def:0,f:fdB}, eq4:{min:-12,max:12,def:0,f:fdB}, eq5:{min:-12,max:12,def:0,f:fdB},
   dlyOn:{b:1,def:0}, dlyTime:{min:60,max:1200,def:450,f:fms,log:1}, dlyFb:{min:0,max:90,def:35,f:fpct}, dlyMix:{min:0,max:60,def:20,f:fpct}, dlyTone:{...K11,def:5.5},
   revOn:{b:1,def:1}, revDecay:{min:.4,max:12,def:1.2,f:fs,log:1}, revPre:{min:0,max:120,def:20,f:fms}, revMix:{min:0,max:70,def:8,f:fpct}, revTone:{...K11,def:5.5},
   double:{b:1,def:0}
@@ -693,8 +723,8 @@ const PRESETS=[
  {n:'Recto-Solo',d:'Recto-Art mit viel Gain und Mitten nach vorn: fett, flüssig, mit langem Delay-Schweif.',cat:'Solo',loop:'lead',p:{outGain:-5.6,amp:'reckoner',gain:7,bass:4,mid:6.8,treble:6.4,presence:6,depth:5.4,master:6.6,odOn:1,odDrive:2.2,odTone:5.5,odLevel:9,gateThr:-70,gateRel:150,cabType:'crypt',mic:'blend',micPos:.35,cabLo:100,cabHi:9500,dlyOn:1,dlyTime:500,dlyFb:35,dlyMix:22,dlyTone:5,revOn:1,revDecay:3.5,revPre:30,revMix:20,revTone:5}},
  {n:'Hammer-Solo',d:'VH4-Art: präzise auch bei schnellen Läufen, warm in den Mitten. Vali zählt ein, Silvan rennt los.',cat:'Solo',loop:'lead',p:{outGain:-5.5,amp:'hammer',gain:7.4,bass:4.6,mid:7.4,treble:6,presence:5.8,depth:5,master:6.6,odOn:1,odDrive:1.5,odTone:6,odLevel:9.5,gateThr:-70,gateRel:140,cabType:'crypt',mic:'blend',micPos:.35,cabLo:100,cabHi:9500,dlyOn:1,dlyTime:400,dlyFb:30,dlyMix:20,dlyTone:5,revOn:1,revDecay:3,revPre:25,revMix:18,revTone:5}},
  {n:'Afterlife Solo',d:'Bissiger Solo-Sound auf dem Rhythm-Amp.',cat:'Solo',loop:'lead',p:{outGain:-6,amp:'haunt',gain:6.8,bass:5,mid:8.2,treble:6.4,presence:6.4,depth:5,master:6.6,odDrive:3,odTone:6,odLevel:8.5,gateThr:-66,gateRel:90,mic:'dyn57',micPos:.45,...eqv([-1,0,1.5,0,-1]),dlyOn:1,dlyTime:300,dlyFb:22,dlyMix:16,revOn:1,revDecay:2.4,revMix:14}},
- {n:'Glass Veil',d:'Glasklar und breit. Für Intros.',cat:'Clean & Ambient',loop:'clean',p:{outGain:-10,amp:'veil',gain:4,bass:5.5,mid:5,treble:7,presence:6.6,depth:5.5,master:7,odOn:0,gateOn:0,cabType:'hollow',mic:'rib121',micPos:.3,cabLo:70,cabHi:14000,...eqv([0,-1,-1,1,1.5]),dlyOn:1,dlyTime:450,dlyFb:35,dlyMix:22,dlyTone:6.6,revOn:1,revDecay:5.5,revMix:32,revTone:6.6,double:1,ampTight:0}},
- {n:'Ether Swells',d:'Hall bis ins Jenseits.',cat:'Clean & Ambient',loop:'clean',p:{outGain:-12.2,amp:'veil',gain:3.2,bass:5.5,mid:5,treble:6.6,presence:6,master:7,odOn:0,gateOn:0,cabType:'hollow',mic:'blend',micPos:.4,...eqv([0,-1,-.5,.5,1]),dlyOn:1,dlyTime:600,dlyFb:62,dlyMix:36,dlyTone:5,revOn:1,revDecay:11,revPre:60,revMix:55,revTone:5.5,double:1,ampTight:0}},
+ {n:'Glass Veil',d:'Glasklar und breit. Für Intros.',cat:'Clean & Ambient',loop:'clean',p:{chOn:1,chRate:.6,chDepth:6,chMix:35,outGain:-10,amp:'veil',gain:4,bass:5.5,mid:5,treble:7,presence:6.6,depth:5.5,master:7,odOn:0,gateOn:0,cabType:'hollow',mic:'rib121',micPos:.3,cabLo:70,cabHi:14000,...eqv([0,-1,-1,1,1.5]),dlyOn:1,dlyTime:450,dlyFb:35,dlyMix:22,dlyTone:6.6,revOn:1,revDecay:5.5,revMix:32,revTone:6.6,double:1,ampTight:0}},
+ {n:'Ether Swells',d:'Hall bis ins Jenseits.',cat:'Clean & Ambient',loop:'clean',p:{chOn:1,chRate:.35,chDepth:8,chMix:30,outGain:-12.2,amp:'veil',gain:3.2,bass:5.5,mid:5,treble:6.6,presence:6,master:7,odOn:0,gateOn:0,cabType:'hollow',mic:'blend',micPos:.4,...eqv([0,-1,-.5,.5,1]),dlyOn:1,dlyTime:600,dlyFb:62,dlyMix:36,dlyTone:5,revOn:1,revDecay:11,revPre:60,revMix:55,revTone:5.5,double:1,ampTight:0}},
  {n:"Robin's Ballade",d:'Leicht angezerrt, warm. Feuerzeuge raus.',cat:'Clean & Ambient',loop:'clean',p:{outGain:-17.2,amp:'veil',gain:7,bass:5.8,mid:6,treble:6,presence:5.5,depth:5.5,master:7,odOn:1,odDrive:3,odTone:5,odLevel:7,gateOn:0,cabType:'wraith',mic:'rib121',micPos:.45,...eqv([0,-.5,.5,0,-1]),dlyOn:1,dlyTime:450,dlyFb:30,dlyMix:20,revOn:1,revDecay:3.5,revMix:24,ampTight:0,ampBright:1}}
 ];
 let curPreset=0, dirty=false, follow=true;
@@ -743,7 +773,7 @@ function mountToggles(){
   $$('[data-st]').forEach(s=>{const id=s.dataset.st, upd=v=>s.textContent=stTxt[id][v?1:0]; bind(id,upd); upd(state[id]);});
 }
 const ICONS=[
-  {mod:'pedals',tip:'Pedale',sub:'Gate · Screamer'},{mod:'amp',tip:'Amp',sub:'4 Röhren-Amps'},{mod:'cab',tip:'Cab',sub:'Speaker · Mic'},{mod:'eq',tip:'EQ',sub:'Graphic 5'},{mod:'fx',tip:'FX',sub:'Delay · Reverb'}
+  {mod:'pedals',tip:'Pedale',sub:'Gate · Screamer'},{mod:'amp',tip:'Amp',sub:'4 Röhren-Amps'},{mod:'cab',tip:'Cab',sub:'Speaker · Mic'},{mod:'eq',tip:'EQ',sub:'Parametrisch 5'},{mod:'fx',tip:'FX',sub:'Chorus · Delay · Reverb'}
 ];
 let curMod='amp';
 function mountIcons(){
@@ -788,14 +818,37 @@ function mountCab(){
   spk.addEventListener('pointerdown',e=>{spk.setPointerCapture(e.pointerId); fromX(e); const mv=ev=>fromX(ev); const up=()=>{spk.removeEventListener('pointermove',mv);spk.removeEventListener('pointerup',up)}; spk.addEventListener('pointermove',mv); spk.addEventListener('pointerup',up);});
   spk.addEventListener('keydown',e=>{if(e.key==='ArrowRight')set('micPos',state.micPos+.05); if(e.key==='ArrowLeft')set('micPos',state.micPos-.05);});
 }
+const EQB=[{n:'Low',t:'Shelf',c:'#7C9A85'},{n:'Low Mid',t:'Glocke',c:'#C2A464'},{n:'Mid',t:'Glocke',c:'#D9DDD4'},{n:'High Mid',t:'Glocke',c:'#C07D93'},{n:'High',t:'Shelf',c:'#73AFCF'}];
+let eqSel=-1;
 function mountEQ(){
-  const f=$('#faders');
-  EQF.forEach((hz,i)=>{const id='eq'+(i+1), w=document.createElement('label'); w.className='fader';
-    w.innerHTML=`<span class="v"></span><input type="range" id="${id}" min="-12" max="12" step="0.5" aria-label="EQ ${fhz(hz)}"><b>${hz>=1000?(hz/1000)+'k':hz}</b>`;
-    const inp=w.querySelector('input'), vs=w.querySelector('.v');
-    const upd=v=>{inp.value=v; vs.textContent=(v>0?'+':'')+(+v).toFixed(1); if(curMod==='eq') drawEQ();};
-    bind(id,upd); upd(state[id]); inp.addEventListener('input',()=>set(id,+inp.value)); inp.addEventListener('dblclick',()=>set(id,0)); let lt=0; inp.addEventListener('pointerdown',()=>{const n=performance.now(); if(n-lt<320) set(id,0); lt=n;}); f.appendChild(w);});
+  const view=$('#eqView'), cards=$('#eqBands'), tip=$('#eqTip');
+  const geo=()=>{const r=view.getBoundingClientRect(); return {W:r.width,H:r.height,r};};
+  const toF=(x,W)=>20*Math.pow(1000,clamp(x/W,0,1)), toG=(y,H)=>clamp((H/2-y)/(H/2-16)*15,-12,12);
+  const showTip=i=>{const n=i+1; tip.textContent=`${EQB[i].n}  ${fhz(state['eqF'+n])}  ${fdB(state['eq'+n])}`+(i>0&&i<4?`  Q ${state['eqQ'+n].toFixed(2)}`:''); tip.hidden=false;};
+  const select=i=>{eqSel=i; $$('.eqn').forEach((e,k)=>e.classList.toggle('sel',k===i)); $$('.eqcard').forEach((e,k)=>e.classList.toggle('sel',k===i));};
+  EQB.forEach((b,i)=>{const n=i+1;
+    const nd=document.createElement('button'); nd.className='eqn'; nd.style.setProperty('--c',b.c); nd.textContent=n; nd.setAttribute('aria-label',`EQ-Band ${n} (${b.n})`); view.appendChild(nd);
+    let last=0;
+    nd.addEventListener('pointerdown',e=>{e.preventDefault(); select(i); const now=performance.now(); if(now-last<320){last=0; set('eq'+n,0); return;} last=now;
+      nd.setPointerCapture(e.pointerId); showTip(i);
+      const mv=ev=>{const {W,H,r}=geo(); set('eqF'+n,clamp(toF(ev.clientX-r.left,W),PARAMS['eqF'+n].min,PARAMS['eqF'+n].max)); set('eq'+n,Math.round(toG(ev.clientY-r.top,H)*10)/10); showTip(i);};
+      const up=()=>{nd.removeEventListener('pointermove',mv); nd.removeEventListener('pointerup',up); tip.hidden=true;};
+      nd.addEventListener('pointermove',mv); nd.addEventListener('pointerup',up);});
+    nd.addEventListener('wheel',e=>{e.preventDefault(); if(i>0&&i<4) set('eqQ'+n,state['eqQ'+n]*Math.exp(-e.deltaY*.002)); else set('eq'+n,state['eq'+n]-e.deltaY*.01); showTip(i); clearTimeout(nd.t); nd.t=setTimeout(()=>tip.hidden=true,700);},{passive:false});
+    nd.addEventListener('keydown',e=>{const d={ArrowUp:[0,.5],ArrowDown:[0,-.5],ArrowRight:[1.03,0],ArrowLeft:[1/1.03,0]}[e.key]; if(!d) return; e.preventDefault();
+      if(d[0]) set('eqF'+n,clamp(state['eqF'+n]*d[0],PARAMS['eqF'+n].min,PARAMS['eqF'+n].max)); else set('eq'+n,state['eq'+n]+d[1]);});
+    const card=document.createElement('div'); card.className='eqcard'; card.style.setProperty('--c',b.c);
+    card.innerHTML=`<h4><i>${n}</i>${b.n}</h4><div class="ks"><div class="kn sm" data-p="eqF${n}" data-l="Freq"></div><div class="kn sm" data-p="eq${n}" data-l="Gain"></div>${i>0&&i<4?`<div class="kn sm" data-p="eqQ${n}" data-l="Q"></div>`:''}</div>`;
+    card.addEventListener('pointerdown',()=>select(i)); cards.appendChild(card); card.querySelectorAll('.kn').forEach(mountKnob);
+    ['eq'+n,'eqF'+n,'eqQ'+n].forEach(id=>PARAMS[id]&&bind(id,()=>{if(curMod==='eq') drawEQ();}));});
+  $('#eqFlat').addEventListener('click',()=>{for(let n=1;n<=5;n++) set('eq'+n,0);});
   bind('eqOn',()=>drawEQ());
+}
+// live output spectrum in dB at frequency f (web analyser or plugin engine), 1/6-octave smoothed
+function liveSpec(f){
+  if(HOST){ if(!hostSpec) return null; const t=Math.log(f/40)/Math.log(400)*239; if(t<0||t>239) return null; const i=Math.floor(t); let e=0,c=0; for(let k=Math.max(0,i-2);k<=Math.min(239,i+3);k++){e+=Math.pow(10,hostSpec[k]/10);c++;} return 10*Math.log10(e/c+1e-12); }
+  if(!specData||!ctx) return null; const sr=ctx.sampleRate, bins=specData.length; let e=0,c=0;
+  for(let b=Math.floor(f/1.06/(sr/2)*bins); b<=Math.ceil(f*1.06/(sr/2)*bins)&&b<bins; b++){e+=Math.pow(10,specData[b]/10);c++;} return c?10*Math.log10(e/c+1e-12):null;
 }
 function rbjMag(type,f0,Q,g,f,sr=48000){
   const A=Math.pow(10,g/40), w0=2*Math.PI*f0/sr, cs=Math.cos(w0), sn=Math.sin(w0); let b0,b1,b2,a0,a1,a2;
@@ -807,7 +860,8 @@ function rbjMag(type,f0,Q,g,f,sr=48000){
   const nr=b0+b1*c1+b2*c2, ni=-(b1*s1+b2*s2), dr=a0+a1*c1+a2*c2, di=-(a1*s1+a2*s2);
   return 10*Math.log10((nr*nr+ni*ni)/(dr*dr+di*di));
 }
-const eqMag=f=>EQF.reduce((db,f0,i)=>{const g=state['eq'+(i+1)]; return g?db+rbjMag(i===0?'ls':i===4?'hs':'pk',f0,1.1,g,f):db},0);
+const bandMag=(i,f)=>{const g=state['eq'+(i+1)]; return g?rbjMag(i===0?'ls':i===4?'hs':'pk',state['eqF'+(i+1)],state['eqQ'+(i+1)]||1.1,g,f):0};
+const eqMag=f=>{let db=0; for(let i=0;i<5;i++) db+=bandMag(i,f); return db};
 function sizeCanvas(c){const r=c.getBoundingClientRect(), d=devicePixelRatio||1; if(c.width!==Math.round(r.width*d)){c.width=Math.round(r.width*d);c.height=Math.round(r.height*d);} return [c.getContext('2d'),c.width,c.height,d];}
 function plotCurve(c,fn,{range=15,color='#A9C8B1',fill=true,grid=true,clear=true}={}){
   if(!c.offsetParent) return; const [g,W,H,d]=sizeCanvas(c);
@@ -820,7 +874,27 @@ function plotCurve(c,fn,{range=15,color='#A9C8B1',fill=true,grid=true,clear=true
   g.strokeStyle=color; g.lineWidth=2*d; g.shadowColor=color; g.shadowBlur=6*d; g.stroke(); g.shadowBlur=0;
   if(fill){g.lineTo(W,fy(0)); g.lineTo(0,fy(0)); g.closePath(); g.fillStyle='rgba(169,200,177,.07)'; g.fill();}
 }
-function drawEQ(){ plotCurve($('#eqScreen'),f=>state.eqOn?eqMag(f):0); }
+function drawEQ(){
+  const c=$('#eqScreen'); if(!c||!c.offsetParent) return; const [g,W,H,d]=sizeCanvas(c);
+  const fx=f=>Math.log(f/20)/Math.log(1000)*W, fy=db=>H/2-db/15*(H/2-16*d), on=state.eqOn;
+  g.clearRect(0,0,W,H);
+  // grid
+  g.lineWidth=d; g.font=`${10*d}px "Space Mono", monospace`;
+  [20,50,100,200,500,1000,2000,5000,10000,20000].forEach(f=>{g.strokeStyle='rgba(201,206,198,.07)'; g.beginPath(); g.moveTo(fx(f),0); g.lineTo(fx(f),H); g.stroke(); g.fillStyle='rgba(201,206,198,.4)'; if(f>20&&f<20000) g.fillText(f>=1000?f/1000+'k':f,fx(f)+4*d,H-6*d);});
+  [-12,-6,6,12].forEach(db=>{g.strokeStyle='rgba(201,206,198,.06)'; g.beginPath(); g.moveTo(0,fy(db)); g.lineTo(W,fy(db)); g.stroke(); g.fillStyle='rgba(201,206,198,.35)'; g.fillText((db>0?'+':'')+db,6*d,fy(db)-4*d);});
+  g.strokeStyle='rgba(201,206,198,.18)'; g.beginPath(); g.moveTo(0,fy(0)); g.lineTo(W,fy(0)); g.stroke();
+  // live spectrum
+  if(liveSpec(1000)!==null){ g.beginPath(); g.moveTo(0,H); for(let x=0;x<=W;x+=3*d){const v=liveSpec(20*Math.pow(1000,x/W)); g.lineTo(x,v===null?H:H-clamp((v+96)/84,0,1)*H*.92);} g.lineTo(W,H); g.closePath();
+    const sg=g.createLinearGradient(0,0,0,H); sg.addColorStop(0,'rgba(169,200,177,.28)'); sg.addColorStop(1,'rgba(169,200,177,.02)'); g.fillStyle=sg; g.fill(); }
+  // per-band contributions
+  EQB.forEach((b,i)=>{ if(!state['eq'+(i+1)]) return; g.beginPath(); for(let x=0;x<=W;x+=3*d){const y=fy(on?bandMag(i,20*Math.pow(1000,x/W)):0); x?g.lineTo(x,y):g.moveTo(x,y);} g.lineTo(W,fy(0)); g.lineTo(0,fy(0)); g.closePath();
+    g.fillStyle=b.c+(i===eqSel?'40':'1c'); g.fill(); });
+  // composite curve
+  g.beginPath(); for(let x=0;x<=W;x+=2){const y=fy(on?eqMag(20*Math.pow(1000,x/W)):0); x?g.lineTo(x,y):g.moveTo(x,y);}
+  g.strokeStyle=on?'#ECEEE8':'rgba(236,238,232,.35)'; g.lineWidth=2.2*d; g.shadowColor='rgba(169,200,177,.9)'; g.shadowBlur=on?12*d:0; g.stroke(); g.shadowBlur=0;
+  // nodes follow the bands
+  $$('#eqView .eqn').forEach((nd,i)=>{const n=i+1; nd.style.left=fx(state['eqF'+n])/d+'px'; nd.style.top=fy(on?state['eq'+n]:0)/d+'px'; nd.classList.toggle('zero',!state['eq'+n]);});
+}
 function drawIR(){ const s=cabSpectrum(); plotCurve($('#irScreen'),s,{range:40,fill:false}); }
 
 const roomName=v=>v<1.5?'Proberaum':v<4?'Kirche':v<8?'Kathedrale':'Jenseits';
@@ -1060,7 +1134,14 @@ async function buildEngine(ac){
   E.eq=EQF.map((f,i)=>bq(i===0?'lowshelf':i===4?'highshelf':'peaking',f,1.1,0)); chain(...E.eq);
   E.eqB=byp(E.eq[0],E.eq[4]); E.cab.o.connect(E.eqB.i);
   // ping-pong delay
-  const fxIn=gn(1); E.eqB.o.connect(fxIn);
+  // chorus: two modulated delays with opposite LFO phase, blended over the dry signal
+  const chIn=gn(1), chMono=ac.createGain(); chMono.channelCount=1; chMono.channelCountMode='explicit'; chMono.channelInterpretation='speakers';
+  E.chL=ac.createDelay(.05); E.chR=ac.createDelay(.05); E.chL.delayTime.value=E.chR.delayTime.value=.012;
+  E.lfo=ac.createOscillator(); E.lfo.frequency.value=.8; E.chDL=gn(0); E.chDR=gn(0);
+  E.lfo.connect(E.chDL).connect(E.chL.delayTime); E.lfo.connect(E.chDR).connect(E.chR.delayTime); E.lfo.start();
+  const chM=ac.createChannelMerger(2); E.chWet=gn(0);
+  E.eqB.o.connect(chIn); chIn.connect(chMono); chMono.connect(E.chL); chMono.connect(E.chR); E.chL.connect(chM,0,0); E.chR.connect(chM,0,1); chM.connect(E.chWet);
+  const fxIn=gn(1); chIn.connect(fxIn); E.chWet.connect(fxIn);
   const mono=ac.createGain(); mono.channelCount=1; mono.channelCountMode='explicit'; mono.channelInterpretation='speakers';
   E.dL=ac.createDelay(2); E.dR=ac.createDelay(2); E.lpL=bq('lowpass',4000,.5); E.lpR=bq('lowpass',4000,.5); E.fbL=gn(.3); E.fbR=gn(.3);
   const mrg=ac.createChannelMerger(2); E.dWet=gn(0); const revIn=gn(1);
@@ -1096,6 +1177,11 @@ async function buildEngine(ac){
       case 'cabLo': ramp(E.cabLo.frequency,v); break;
       case 'cabHi': ramp(E.cabHi.frequency,v); break;
       case 'eqOn': E.eqB.set(v); break;
+      case 'eqF1': case 'eqF2': case 'eqF3': case 'eqF4': case 'eqF5': ramp(E.eq[+id[3]-1].frequency,v); break;
+      case 'eqQ2': case 'eqQ3': case 'eqQ4': ramp(E.eq[+id[3]-1].Q,v); break;
+      case 'chOn': case 'chMix': ramp(E.chWet.gain,state.chOn?state.chMix/100:0); break;
+      case 'chRate': ramp(E.lfo.frequency,v); break;
+      case 'chDepth': ramp(E.chDL.gain,.0035*v/11); ramp(E.chDR.gain,-.0035*v/11); break;
       case 'dlyOn': case 'dlyMix': ramp(E.dWet.gain,state.dlyOn?state.dlyMix/100*1.4:0); break;
       case 'dlyTime': ramp(E.dL.delayTime,v/1000,.06); ramp(E.dR.delayTime,v/1000,.06); break;
       case 'dlyFb': ramp(E.fbL.gain,v/100); ramp(E.fbR.gain,v/100); break;
@@ -1237,6 +1323,7 @@ const clipT={in:-1e9,out:-1e9,qin:-1e9,qout:-1e9};
 function frame(){
   raf=requestAnimationFrame(frame);
   if(!E) return;
+  if(curMod==='eq') requestAnimationFrame(drawEQ);
   pkIn=Math.max(peak(E.meterIn),pkIn*.9); pkOut=Math.max(peak(E.meterOut),pkOut*.9);
   setLvl('#kIn',pkIn); setLvl('#kOut',pkOut);
   const now=performance.now(), pin=peak(E.meterIn), pre=peak(E.meterPre);
@@ -1301,6 +1388,7 @@ function frameHost(){
   lvlS+=(Math.min(1,pkOut*1.6)-lvlS)*.15; Amp3D.setGlow(clamp(lvlS*1.2,0,1));
   if(!specBusy){specBusy=true; HOST.call('spectrum',SPEC_F).then(d=>{specBusy=false; if(!Array.isArray(d)) return; if(!hostSpec) hostSpec=d.slice(); else for(let i=0;i<d.length;i++) hostSpec[i]=.8*hostSpec[i]+.2*d[i];});}
   if(!hostSpec) return;
+  if(curMod==='eq') drawEQ();
   const c=$('#spec'), [g,W,H,d]=sizeCanvas(c); g.clearRect(0,0,W,H);
   const fx=x=>40*Math.pow(16000/40,x/W), at=x=>{const t=x/W*239, i=Math.min(238,Math.floor(t)); let e=0,cnt=0; for(let k=Math.max(0,i-3);k<=Math.min(239,i+4);k++){e+=Math.pow(10,hostSpec[k]/10);cnt++;} return 10*Math.log10(e/cnt+1e-12);};
   const ref1k=at(W*Math.log(1000/40)/Math.log(400)), yOf=db=>H*.5-db/36*H*.9;
@@ -1364,6 +1452,19 @@ showMod('amp');
   g.putImageData(img,0,0);$('#stage').style.setProperty('--clouds',`url(${c.toDataURL('image/jpeg',.85)})`);})();
 bind('amp',v=>$('#stage').dataset.look=v);
 if(Amp3D.init($('#amp3d'))) $('section[data-mod=amp]').classList.add('has3d'); else $('#amp3d').remove();
+const PEDALS={
+  pre:[{name:'VALI-GATE',sub:'Noise Gate',art:'gate',color:'#23272a',ink:'#A9C8B1',accent:'#A9C8B1',font:"'Michroma',sans-serif",size:.07,ls:4,led:'#8fdc9f',sw:'gateOn',knob:'#0d0e0f',
+        knobs:[{p:'gateThr',l:'THRESH'},{p:'gateRange',l:'RANGE'},{p:'gateHold',l:'HOLD'},{p:'gateRel',l:'RELEASE'}]},
+       {name:"SILVAN'S\nSCREAMER",sub:'Overdrive · Boost',art:'scream',color:'#5c7a65',ink:'#ECEEE8',accent:'#151816',font:"'Black Ops One',Impact,sans-serif",size:.086,led:'#ff3b2e',sw:'odOn',knob:'#111213',
+        knobs:[{p:'odDrive',l:'DRIVE'},{p:'odTone',l:'TONE'},{p:'odLevel',l:'LEVEL'}]}],
+  fx:[{name:'PHANTOM',sub:'Stereo Chorus',art:'phantom',color:'#4a3a6e',flake:1,ink:'#ECEEE8',accent:'#cdbdff',font:"'Michroma',sans-serif",size:.078,ls:6,led:'#8a9bff',sw:'chOn',knob:'#e8e1cf',knobPtr:'#151515',
+        knobs:[{p:'chRate',l:'RATE'},{p:'chDepth',l:'DEPTH'},{p:'chMix',l:'MIX'}]},
+      {name:'AFTERIMAGE',sub:'Ping-Pong Delay',art:'echo',color:'#1c3250',flake:1,ink:'#dbe9ff',accent:'#9cc4ff',font:"'Michroma',sans-serif",size:.062,ls:3,led:'#4aa8ff',sw:'dlyOn',knob:'#0f1218',
+        knobs:[{p:'dlyTime',l:'TIME'},{p:'dlyFb',l:'REPEATS'},{p:'dlyMix',l:'MIX'},{p:'dlyTone',l:'TONE'}]},
+      {name:'Ether',sub:'Hall Reverb',art:'ether',color:'#d8cdb2',ink:'#2a2112',accent:'#8a6a3a',font:"'Archivo',sans-serif",weight:'italic 800',size:.11,led:'#ffb03b',sw:'revOn',knob:'#1b1712',
+        knobs:[{p:'revDecay',l:'DECAY'},{p:'revPre',l:'PRE-DELAY'},{p:'revMix',l:'MIX'},{p:'revTone',l:'TONE'}]}]};
+if(Pedal3D.create($('#pedals3d'),PEDALS.pre)) $('section[data-mod=pedals]').classList.add('has3d'); else $('#pedals3d').remove();
+if(Pedal3D.create($('#fx3d'),PEDALS.fx)) $('section[data-mod=fx]').classList.add('has3d'); else $('#fx3d').remove();
 if(HOST) hostBoot(); else { loadPreset(0); quip('Tipp: Play drücken. Regler gehen bis 11, natürlich.'); }
 (function idle(){ if(!E){ $('#ampEl').style.setProperty('--glow',state.power?(.35+.3*state.gain/11+(reduce?0:(Math.random()-.5)*.03)).toFixed(3):'0.04'); setTimeout(idle,120);} })();
 addEventListener('resize',()=>{if(curMod==='eq')drawEQ(); if(curMod==='cab')drawIR();});

@@ -255,14 +255,14 @@ function build(){
   parts.spill=new T.PointLight(0xff8040,0,2.2,2);parts.spill.position.set(0,-H/2+FR+PH+.05,PZ+.25);g.add(parts.spill);
   return {group:g,parts}}
 
-function envMap(){const s=new T.Scene();s.background=new T.Color(0x0b0b0c);
+function envMap(r=R){const s=new T.Scene();s.background=new T.Color(0x0b0b0c);
   const box=new T.Mesh(new T.BoxGeometry(30,30,30),new T.MeshBasicMaterial({color:0x101012,side:T.BackSide}));s.add(box);
   const panel=(w,h,c,i,pos,look)=>{const m=new T.Mesh(new T.PlaneGeometry(w,h),new T.MeshBasicMaterial({color:new T.Color(c).multiplyScalar(i)}));m.position.set(...pos);m.lookAt(...look);s.add(m)};
   panel(14,4,0xffffff,6,[0,12,6],[0,0,0]);          // big softbox above/front
   panel(3,12,0xdfe6ff,2.2,[-13,2,4],[0,0,0]);       // cool strip left
   panel(3,12,0xffe2c4,1.6,[13,2,2],[0,0,0]);        // warm strip right
   panel(20,6,0x3a3a40,1,[0,-12,0],[0,0,0]);         // floor bounce
-  const pm=new T.PMREMGenerator(R);const rt=pm.fromScene(s,.04);pm.dispose();return rt.texture}
+  const pm=new T.PMREMGenerator(r);const rt=pm.fromScene(s,.04);pm.dispose();return rt.texture}
 
 /* ---------- theme application ---------- */
 function applyTheme(key){const th=THEMES[key],p=built.parts,tl=tolexMaps(key.length,th.tolexKind),br=brushedMaps(3),rl=relief(key);theme=key;
@@ -322,5 +322,6 @@ function init(container){
   new ResizeObserver(resize).observe(host);resize();
   document.fonts&&document.fonts.ready.then(()=>{for(const k in THEMES)delete cache['plate'+k];applyTheme(theme)});
   loop();return true}
-return {init,setGlow(v){if(Math.abs(v-glow)>.004){glow=v;dirty=true}},get ok(){return ok}};
+return {init,setGlow(v){if(Math.abs(v-glow)>.004){glow=v;dirty=true}},get ok(){return ok},
+  helpers:{cnv,tex,vnoise,fbm,sm,normalFromHeight,grayCanvas,G_PATH,envMap}};  // shared with Pedal3D
 })();

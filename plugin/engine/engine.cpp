@@ -235,10 +235,10 @@ struct Reverb {
 // ---------------------------------------------------------------- engine
 enum Pid { inGain, outGain, gateOn, gateThr, gateRel, gateHold, gateRange, odOn, odDrive, odTone, odLevel, amp, gain, bass, mid, treble, presence, depth, master,
   ampTight, ampBright, power, cabOn, cabType, mic, micPos, cabLo, cabHi, eqOn, eq1, eq2, eq3, eq4, eq5, dlyOn, dlyTime, dlyFb, dlyMix, dlyTone,
-  revOn, revDecay, revPre, revMix, revTone, NP };
+  revOn, revDecay, revPre, revMix, revTone, eqF1, eqF2, eqF3, eqF4, eqF5, eqQ2, eqQ3, eqQ4, chOn, chRate, chDepth, chMix, NP };
 static const char* PNAMES[NP] = {"inGain", "outGain", "gateOn", "gateThr", "gateRel", "gateHold", "gateRange", "odOn", "odDrive", "odTone", "odLevel", "amp", "gain", "bass", "mid", "treble", "presence", "depth", "master",
   "ampTight", "ampBright", "power", "cabOn", "cabType", "mic", "micPos", "cabLo", "cabHi", "eqOn", "eq1", "eq2", "eq3", "eq4", "eq5", "dlyOn", "dlyTime", "dlyFb", "dlyMix", "dlyTone",
-  "revOn", "revDecay", "revPre", "revMix", "revTone"};
+  "revOn", "revDecay", "revPre", "revMix", "revTone", "eqF1", "eqF2", "eqF3", "eqF4", "eqF5", "eqQ2", "eqQ3", "eqQ4", "chOn", "chRate", "chDepth", "chMix"};
 
 struct Engine {
   double sr; int maxBlock;
@@ -247,7 +247,8 @@ struct Engine {
 
   Chain ch[2]; bool prevSame = true;
   AmpCoef ac{}; int ampCur = 0, ampPending = -1; double fade = 1;
-  Smooth sIn, sOut, sOdW, sOdD, sOdDrv, sOdLvl, sStby, sCabW, sCabD, sEqW, sEqD, sDWet, sFb, sDt, sRWet;
+  Smooth sIn, sOut, sOdW, sOdD, sOdDrv, sOdLvl, sStby, sCabW, sCabD, sEqW, sEqD, sDWet, sFb, sDt, sRWet, sChW, sChD;
+  std::vector<float> chBuf; int chW = 0; double chPh = 0, chInc = 0;
   double gate[6]{};
   std::vector<float> dL, dR; int dW = 0; WBQ lpL, lpR; double lpRout = 0;
   Reverb rev; double revK = 1.0; int odDelay = 0;
@@ -352,7 +353,12 @@ struct Engine {
       case cabLo: for (auto& c : ch) c.cabLo.set(WBQ::HP, v, .7, 0, sr); break;
       case cabHi: for (auto& c : ch) c.cabHi.set(WBQ::LP, v, .7, 0, sr); break;
       case eqOn: sEqW.t = v > .5; sEqD.t = v > .5 ? 0 : 1; break;
-      case eq1: case eq2: case eq3: case eq4: case eq5: { int k = i - eq1; int t = k == 0 ? WBQ::LS : k == 4 ? WBQ::HS : WBQ::PK; for (auto& c : ch) c.eq[k].set(t, eqf[k], 1.1, v, sr); } break;
+      case eq1: case eq2: case eq3: case eq4: case eq5: eqBand(i - eq1); break;
+      case eqF1: case eqF2: case eqF3: case eqF4: case eqF5: eqBand(i - eqF1); break;
+      case eqQ2: case eqQ3: case eqQ4: eqBand(i - eqQ2 + 1); break;
+      case chOn: case chMix: sChW.t = p[chOn] > .5 ? p[chMix] / 100 : 0; break;
+      case chRate: chInc = 2 * M_PI * v / sr; break;
+      case chDepth: sChD.t = .0035 * v / 11 * sr; break;
       case dlyOn: case dlyMix: sDWet.t = p[dlyOn] > .5 ? p[dlyMix] / 100 * 1.4 : 0; break;
       case dlyTime: sDt.t = clampv(v / 1000 * sr, 1.0, (double)dL.size() - 4); break;
       case dlyFb: sFb.t = v / 100; break;
@@ -363,11 +369,17 @@ struct Engine {
     }
   }
 
+  void eqBand(int k) {  // movable parametric bands; shelves at both ends
+    int t = k == 0 ? WBQ::LS : k == 4 ? WBQ::HS : WBQ::PK; double q = (k >= 1 && k <= 3) ? cur[eqQ2 + k - 1] : 1.1;
+    for (auto& c : ch) c.eq[k].set(t, cur[eqF1 + k], q, cur[eq1 + k], sr);
+  }
+
   bool init(double s, int mb, const char* js) {
     sr = s; maxBlock = mb; if (!load(js)) return false;
     for (auto& c : ch) { c.amp.clear(); c.odHp.set(WBQ::HP, 720, .7, 0, sr); }
     double tc = .015;
-    for (Smooth* m : {&sIn, &sOut, &sOdW, &sOdD, &sOdDrv, &sOdLvl, &sCabW, &sCabD, &sEqW, &sEqD, &sDWet, &sFb, &sRWet}) m->init(0, tc, sr);
+    for (Smooth* m : {&sIn, &sOut, &sOdW, &sOdD, &sOdDrv, &sOdLvl, &sCabW, &sCabD, &sEqW, &sEqD, &sDWet, &sFb, &sRWet, &sChW, &sChD}) m->init(0, tc, sr);
+    chBuf.assign(8192, 0);
     sStby.init(0, .08, sr); sDt.init(1, .06, sr);
     dL.assign((size_t)(sr * 2.05) + 8, 0); dR.assign(dL.size(), 0);
     rev.init(sr);
@@ -376,7 +388,7 @@ struct Engine {
     ampCur = clampv((int)cur[amp], 0, (int)amps.size() - 1);
     for (int i = 0; i < NP; i++) if (i != amp) apply(i);
     ampCoeffs();
-    for (Smooth* m : {&sIn, &sOut, &sOdW, &sOdD, &sOdDrv, &sOdLvl, &sStby, &sCabW, &sCabD, &sEqW, &sEqD, &sDWet, &sFb, &sDt, &sRWet}) m->v = m->t;
+    for (Smooth* m : {&sIn, &sOut, &sOdW, &sOdD, &sOdDrv, &sOdLvl, &sStby, &sCabW, &sCabD, &sEqW, &sEqD, &sDWet, &sFb, &sDt, &sRWet, &sChW, &sChD}) m->v = m->t;
     active = buildCab();
     worker = std::thread([this, d = reqGen] { workerLoop(d); });
     return true;
@@ -420,7 +432,7 @@ struct Engine {
     prevSame = same;
     double inPk = 0, inSq = 0, outPk = 0, outSq = 0, prePk = 0; const int DS = (int)dL.size(); int tw = tapW.load(std::memory_order_relaxed);
     for (int i = 0; i < n; i++) {
-      for (Smooth* m : {&sIn, &sOut, &sOdW, &sOdD, &sOdDrv, &sOdLvl, &sStby, &sCabW, &sCabD, &sEqW, &sEqD, &sDWet, &sFb, &sDt, &sRWet}) m->tick();
+      for (Smooth* m : {&sIn, &sOut, &sOdW, &sOdD, &sOdDrv, &sOdLvl, &sStby, &sCabW, &sCabD, &sEqW, &sEqD, &sDWet, &sFb, &sDt, &sRWet, &sChW, &sChD}) m->tick();
       // amp model switch: fade out, reset, fade in (as in the worklet)
       double tgt = ampPending >= 0 ? 0 : 1; fade += tgt > fade ? std::min(1.0 / 256, tgt - fade) : std::max(-1.0 / 128, tgt - fade);
       if (ampPending >= 0 && fade <= 0) { ampCur = ampPending; ampPending = -1; ch[0].amp.clear(); ch[1].amp.clear(); ampCoeffs(); }
@@ -428,6 +440,11 @@ struct Engine {
       inPk = std::max(inPk, std::max(std::fabs(xl), std::fabs(xr))); inSq += xl * xl;
       double yl = chainStep(ch[0], xl, gThr2, gCl2, gOn, gFl, kE, aG, rG, hs, fade);
       double yr = same ? yl : chainStep(ch[1], xr, gThr2, gCl2, gOn, gFl, kE, aG, rG, hs, fade);
+      // chorus (web: two DelayNodes driven by one sine LFO with opposite sign)
+      { chBuf[chW] = (float)(.5 * (yl + yr)); const double sn = std::sin(chPh); chPh += chInc; if (chPh > 2 * M_PI) chPh -= 2 * M_PI;
+        if (sChW.v > 1e-7) { auto tap = [&](double d) { int ip = (int)d; double fr = d - ip; int a = (chW - ip) & 8191, b = (a - 1) & 8191; return chBuf[a] * (1 - fr) + chBuf[b] * fr; };
+          const double base = .012 * sr; double wl = tap(base + sChD.v * sn), wr = tap(base - sChD.v * sn); yl += sChW.v * wl; yr += sChW.v * wr; }
+        chW = (chW + 1) & 8191; }
       // ping-pong delay
       double mono = .5 * (yl + yr), dt = sDt.v; int ip = (int)dt; double fr = dt - ip;
       auto rd = [&](const std::vector<float>& b) { int a = dW - ip; if (a < 0) a += DS; int c = a - 1; if (c < 0) c += DS; return b[a] * (1 - fr) + b[c] * fr; };

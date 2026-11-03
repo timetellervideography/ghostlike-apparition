@@ -3,7 +3,8 @@
 # Run tools/build.sh first. Set SIGN_INSTALLER_ID to a "Developer ID Installer" identity to sign the pkg.
 set -e
 cd "$(dirname "$0")/.."
-VER=$(sed -n 's/^project(GhostlikeApparition VERSION \([0-9.]*\).*/\1/p' CMakeLists.txt)
+VER=$(sed -n 's/^project(GhostlikeApparition VERSION \([0-9.]*\).*/\1/p' CMakeLists.txt)   # shell version (package receipts)
+PACK=$(node -p 'require("./build/pack/pack.json").version')                          # what the user sees
 ART=build/GhostlikeApparition_artefacts/Release; OUT=build/installer; W="$OUT/work"
 rm -rf "$OUT"; mkdir -p "$W/au/root" "$W/vst3/root" "$W/scripts"
 cp -R "$ART/AU/Ghostlike Apparition.component" "$W/au/root/"
@@ -32,7 +33,7 @@ HTML
 cat > "$W/dist.xml" <<XML
 <?xml version="1.0" encoding="utf-8"?>
 <installer-gui-script minSpecVersion="2">
-  <title>Ghostlike Apparition $VER</title>
+  <title>Ghostlike Apparition $PACK</title>
   <welcome file="welcome.html"/>
   <options customize="allow" require-scripts="false" hostArchitectures="arm64,x86_64"/>
   <choices-outline><line choice="au"/><line choice="vst3"/></choices-outline>
@@ -42,7 +43,7 @@ cat > "$W/dist.xml" <<XML
   <pkg-ref id="de.ghostlike.apparition.vst3">vst3.pkg</pkg-ref>
 </installer-gui-script>
 XML
-PKG="$OUT/Ghostlike-Apparition-$VER.pkg"
+PKG="$OUT/Ghostlike-Apparition-$PACK.pkg"
 if [ -n "$SIGN_INSTALLER_ID" ]; then SIGN="--sign $SIGN_INSTALLER_ID"; else SIGN=""; fi
 productbuild --distribution "$W/dist.xml" --package-path "$W" --resources "$W/res" $SIGN "$PKG" >/dev/null
 rm -rf "$W"

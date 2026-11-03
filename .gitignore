@@ -8,3 +8,4 @@ plugin/build/
 plugin/third_party/JUCE/
 plugin/third_party/web/
 .DS_Store
+.claude/

@@ -5,7 +5,7 @@ project(GhostlikeApparition VERSION 1.0.0 LANGUAGES C CXX)
 set(CMAKE_CXX_STANDARD 17)
 
 # Version of the content pack (UI + engine + amp data) that ships inside the installer as the factory pack.
-set(GL_PACK_VERSION "1.0.0" CACHE STRING "content pack version")
+set(GL_PACK_VERSION "1.0.1" CACHE STRING "content pack version")
 # Where the update button looks for new versions (manifest.json of the latest release).
 set(GL_UPDATE_URL "https://github.com/timetellervideography/ghostlike-apparition/releases/latest/download/manifest.json" CACHE STRING "")
 
